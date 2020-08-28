@@ -1,19 +1,16 @@
 package kr.co.tbell.nuguapi.controller;
 
-import java.util.List;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
-import kr.co.tbell.nuguapi.common.util.JsonUtil;
-import kr.co.tbell.nuguapi.domain.model.Station;
-import kr.co.tbell.nuguapi.domain.model.Timetable;
 import kr.co.tbell.nuguapi.domain.network.request.NuguApiRequest;
 import kr.co.tbell.nuguapi.service.NuguApiService;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequestMapping(value="/api")
 public class NuguApiController {
@@ -25,6 +22,7 @@ public class NuguApiController {
 	public String getTimetable(@RequestBody String request) {
 		
 //		JsonUtil.parseRequest(request);
+		log.info(request);
 		NuguApiRequest testRequest = new NuguApiRequest();
 //		
 		String result = nuguApiService.getData(testRequest);
