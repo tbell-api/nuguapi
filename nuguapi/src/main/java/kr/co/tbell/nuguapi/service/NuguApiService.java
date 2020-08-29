@@ -1,11 +1,9 @@
 package kr.co.tbell.nuguapi.service;
 
-import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoField;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -58,16 +56,30 @@ public class NuguApiService {
 	public String getData(NuguApiRequest request) {
 
 		String result = "";
-		Station startStation = getStation("마곡", "05호선");
-		String inOut = getInOut("상행");
-		List<Timetable> timetableList = getTimeTable(startStation, inOut);
+		String reqJson = "";
+		Station reqStation = new Station();
 		NuguApiResponse response = new NuguApiResponse();
 		
+		try {
+			reqJson = objectMapper.writeValueAsString(request);
+			
+			JsonNode rootNode = objectMapper.readTree(reqJson);
+			reqStation.setStationName(rootNode.get("action").get("parameters").get("stationName").get("value").textValue());
+			reqStation.setInOut(rootNode.get("action").get("parameters").get("inOut").get("value").textValue());
+			reqStation.setLineNum(rootNode.get("action").get("parameters").get("lineNum").get("value").textValue());
+			reqStation.setStationCd(getStation(reqStation));
+			
+		} catch (Exception e1) {
+			e1.printStackTrace();
+		}
+		
+		String inOut = getInOutCode("상행");
+		List<Timetable> timetableList = getTimeTable(reqStation, inOut);
 		
 		StationTimetable stationTimetable = new StationTimetable();
-		stationTimetable.setStationName(startStation.getStationNm());
-		stationTimetable.setLineNum(startStation.getLineNum());
-		stationTimetable.setLineInOut(inOut);
+		stationTimetable.setStationName(reqStation.getStationName());
+		stationTimetable.setLineNum(reqStation.getLineNum());
+		stationTimetable.setLineInOut(reqStation.getInOut());
 		stationTimetable.setFirstTime(timetableList.get(0).getLeftTime());
 		stationTimetable.setSecondTime(timetableList.get(1).getLeftTime());
 		stationTimetable.setThirdTime(timetableList.get(2).getLeftTime());
@@ -81,7 +93,6 @@ public class NuguApiService {
 		try {
 			result = objectMapper.writeValueAsString(response);
 		} catch (JsonProcessingException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
@@ -110,7 +121,6 @@ public class NuguApiService {
 		
 		// URL 생성 -> (station.getStationCd(), 넣어야함)
 		String path = "/" + serviceKey + "/json/" + timetable + "/1/500/"  + station.getStationCd() + "/" + inOut + "/" + weekday;
-		log.info(path);
 		
 		String uri =  UriComponentsBuilder.newInstance()
 						.scheme("http")
@@ -120,12 +130,8 @@ public class NuguApiService {
 						.toString();
 		
 		String timetable = sendApiRequest(uri);
-		log.info(timetable);
 
-		// 시간 기준 5개 시간표 잘라서 List에 담기
-		// 1. 현재 시간이 16시 30분이라면 가장 근접한 타임 찾기 - LocalTime에 비교 함수
-		// 2. 그 시간대부터 다음 5개의 시간표 
-		// List<TimeTable>로 만들어서 return
+		// 시간표 데이터 파싱
 		try {
 			JsonNode rootNode = objectMapper.readTree(timetable);
 			ArrayNode arrayNode = (ArrayNode) rootNode.get("SearchSTNTimeTableByIDService").get("row");
@@ -140,23 +146,18 @@ public class NuguApiService {
 					// 24:00:00 표기를 00:00:00으로 변경하고 Day 하루 증가
 					LocalTime leftTime = LocalTime.parse(json.get("LEFTTIME").textValue(), timeFormat);
 					LocalDateTime leftDateTime;
-					if (leftTime.get(ChronoField.CLOCK_HOUR_OF_DAY) == 24) {
+					if (leftTime.getHour() == 24) {
 						LocalTime nextDayTime = LocalTime.now().withHour(0);
 						leftDateTime = LocalDateTime.now().plusDays(1).with(nextDayTime);
-						log.info(leftDateTime.toString());
 					} else {
 						leftDateTime = LocalDateTime.now().with(leftTime);
-						log.info(leftDateTime.toString());
 					}
 					
 					// 기준 시간 보다 이후인 시간표를 얻고 카운트 증가
 					if (localDateTime.isBefore(leftDateTime) && json.get("LINE_NUM").textValue().equals(station.getLineNum())) {
-						log.info(localDateTime.toString());
-						log.info(leftTime.toString());
-						log.info(count + "번 시간표");
 						count++;
 						Timetable time = new Timetable();
-						time.setLeftTime(json.get("LEFTTIME").textValue());
+						time.setLeftTime(convertTime(json.get("LEFTTIME").textValue()));
 						time.setSubwayEName(json.get("SUBWAYENAME").textValue());
 						timeTableList.add(time);
 					}
@@ -168,11 +169,64 @@ public class NuguApiService {
 			e.printStackTrace();
 		}
 		
-//		log.info(timeTableList.toString());
 		return timeTableList;
 	}
 	
-	private String getInOut(String inOut) {
+	
+	private String getStation(Station station) {
+		
+		String result = "";
+		String path = "/" + serviceKey + "/json/" + stationInfo + "/1/100/%20/"  + station.getStationName();
+		
+		String uri =  UriComponentsBuilder.newInstance()
+						.scheme("http")
+						.host(endPoint)
+						.path(path)
+						.build()
+						.toString();
+		
+		String stationResult = sendApiRequest(uri);
+
+		// 역정보 데이터 파싱하여 코드 가져오기
+		try {
+			JsonNode rootNode = objectMapper.readTree(stationResult);
+			ArrayNode arrayNode = (ArrayNode) rootNode.get("SearchSTNBySubwayLineInfo").get("row");
+
+			if (arrayNode.isArray()) {
+				for (JsonNode json : arrayNode) {
+					if (json.get("STATION_NM").textValue().equals(station.getStationName()) && json.get("LINE_NUM").textValue().equals(station.getLineNum())) {
+						result = json.get("STATION_CD").textValue();
+					}
+				}
+			} else {
+				log.info("검색 결과가 없습니다.");
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		log.info(result);
+		return result;
+	}
+	
+	
+	private String sendApiRequest(String uri) {
+		String result = "";
+		
+		HttpHeaders headers = new HttpHeaders();
+		headers.set(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE);
+		headers.set(HttpHeaders.CONTENT_TYPE, "application/json;charset=UTF-8");
+		
+		HttpEntity<?> httpEntity = new HttpEntity<>(headers);
+		
+		ResponseEntity<String> exchangeResult = restTemplate.exchange(uri, HttpMethod.GET, httpEntity, String.class);
+		result = exchangeResult.getBody();
+		
+		return result;
+	}
+
+	
+	private String getInOutCode(String inOut) {
 		
 		String inOutGubun = "";
 		
@@ -190,66 +244,11 @@ public class NuguApiService {
 	}
 	
 	
-	
-	private Station getStation(String stationName, String lineNum) {
+	private String convertTime(String time) {
 		
-		Station station = new Station();
-		String path = "/" + serviceKey + "/json/" + stationInfo + "/1/100/%20/"  + stationName;
-		log.info(path);
-		
-		String uri =  UriComponentsBuilder.newInstance()
-						.scheme("http")
-						.host(endPoint)
-						.path(path)
-						.build()
-						.toString();
-		
-		String stationResult = sendApiRequest(uri);
-		log.info(stationResult);
-
-		try {
-			JsonNode rootNode = objectMapper.readTree(stationResult);
-			ArrayNode arrayNode = (ArrayNode) rootNode.get("SearchSTNBySubwayLineInfo").get("row");
-			// issue: 역이름이 같고, 호선이 같은 역을 찾아내야함
-			if (arrayNode.isArray()) {
-				for (JsonNode json : arrayNode) {
-					if (json.get("STATION_NM").textValue().equals(stationName) && json.get("LINE_NUM").textValue().equals(lineNum)) {
-						station.setStationNm(json.get("STATION_NM").textValue());
-						station.setLineNum(json.get("LINE_NUM").textValue());
-						station.setStationCd(json.get("STATION_CD").textValue());
-					}
-				}
-			} else {
-				log.info("검색 결과가 없습니다.");
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		
-		log.info(station.toString());
-		return station;
-	}
-	
-	
-	
-	private String getTimetable(String stationName, String inOut) {
-		
-		return null;
-	}
-	
-	
-	
-	private String sendApiRequest(String uri) {
 		String result = "";
 		
-		HttpHeaders headers = new HttpHeaders();
-		headers.set(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE);
-		headers.set(HttpHeaders.CONTENT_TYPE, "application/json;charset=UTF-8");
-		
-		HttpEntity<?> httpEntity = new HttpEntity<>(headers);
-		
-		ResponseEntity<String> exchangeResult = restTemplate.exchange(uri, HttpMethod.GET, httpEntity, String.class);
-		result = exchangeResult.getBody();
+		result = time.substring(0, 2) + "시" + time.substring(3, 5) + "분";
 		
 		return result;
 	}

@@ -1,29 +1,27 @@
 package kr.co.tbell.nuguapi.domain.network.request;
 
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import lombok.experimental.Accessors;
 
-@Setter
-@Getter
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
 @ToString
+@Builder
+@Accessors(chain = true)
 public class NuguApiRequest {
 	
 	private String version;
 	
-	private String actionName;
+	private Object action;
 	
-	private String parameters;
-
-	private String eventType;
+	private Object event;
 	
-	private String session;
-	
-	private String device;
-	
-	private String supportedInterfaces;
+	private Object context;
 }

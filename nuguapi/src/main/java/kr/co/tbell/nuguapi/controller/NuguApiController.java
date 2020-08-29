@@ -19,16 +19,9 @@ public class NuguApiController {
 	private NuguApiService nuguApiService;
 	
 	@RequestMapping(value="/timetable", method=RequestMethod.POST)
-	public String getTimetable(@RequestBody String request) {
+	public String getTimetable(@RequestBody NuguApiRequest request) {
 		
-//		JsonUtil.parseRequest(request);
-		log.info(request);
-		NuguApiRequest testRequest = new NuguApiRequest();
-//		
-		String result = nuguApiService.getData(testRequest);
-		
-//		Station station = new Station();
-//		List<Timetable> timeList =  nuguApiService.getTimeTable(station, "1");
+		String result = nuguApiService.getData(request);
 		
 		return result;
 	}

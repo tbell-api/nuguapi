@@ -17,9 +17,11 @@ import lombok.experimental.Accessors;
 @Accessors(chain = true)
 public class Station {
 	
-	private String stationNm;
+	private String stationName;
 	
 	private String lineNum;
+	
+	private String inOut;
 	
 	private String stationCd;
 }

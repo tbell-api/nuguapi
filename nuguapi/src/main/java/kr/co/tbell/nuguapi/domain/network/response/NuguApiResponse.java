@@ -2,16 +2,20 @@ package kr.co.tbell.nuguapi.domain.network.response;
 
 import kr.co.tbell.nuguapi.domain.model.StationTimetable;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import lombok.experimental.Accessors;
 
-@Setter
-@Getter
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
+@Getter
+@Setter
 @ToString
+@Builder
+@Accessors(chain = true)
 public class NuguApiResponse {
 
 	private String version;
