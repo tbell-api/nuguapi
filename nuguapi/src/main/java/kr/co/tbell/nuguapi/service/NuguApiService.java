@@ -73,7 +73,7 @@ public class NuguApiService {
 			e1.printStackTrace();
 		}
 		
-		String inOut = getInOutCode("상행");
+		String inOut = getInOutCode(reqStation.getInOut());
 		List<Timetable> timetableList = getTimeTable(reqStation, inOut);
 		
 		StationTimetable stationTimetable = new StationTimetable();
@@ -96,15 +96,13 @@ public class NuguApiService {
 			e.printStackTrace();
 		}
 		
-		log.info(result);
-		
 		return result;
 	}
 	
 	private List<Timetable> getTimeTable(Station station, String inOut) {
 
         DateTimeFormatter timeFormat = DateTimeFormatter.ofPattern("HH:mm:ss");
-        List<Timetable> timeTableList = new ArrayList<Timetable>();
+        List<Timetable> timetableList = new ArrayList<Timetable>();
 
 		// 시간구하기
 		LocalDateTime localDateTime = LocalDateTime.now().withNano(0);
@@ -120,7 +118,7 @@ public class NuguApiService {
 		}
 		
 		// URL 생성 -> (station.getStationCd(), 넣어야함)
-		String path = "/" + serviceKey + "/json/" + timetable + "/1/500/"  + station.getStationCd() + "/" + inOut + "/" + weekday;
+		String path = "/" + serviceKey + "/json/" + timetable + "/1/500/"  + station.getStationCd() + "/" + weekday + "/" + inOut;
 		
 		String uri =  UriComponentsBuilder.newInstance()
 						.scheme("http")
@@ -136,8 +134,23 @@ public class NuguApiService {
 			JsonNode rootNode = objectMapper.readTree(timetable);
 			ArrayNode arrayNode = (ArrayNode) rootNode.get("SearchSTNTimeTableByIDService").get("row");
 			int count = 0;
+			int index = 0;
+			int arraySize = arrayNode.size();
 			if (arrayNode.isArray()) {
 				for (JsonNode json : arrayNode) {
+					index++;
+					
+					if (index == arraySize) {
+						if (count < 4) {
+							for(int i=0; i<5-count; i++) {
+								Timetable time = new Timetable();
+								time.setLeftTime("열차 없음");
+								time.setSubwayEName("열차 없음");
+								timetableList.add(time);
+							}
+						}
+					}
+					
 					// 5개를 얻기 위한 카운트
 					if (count > 5) {
 						break;
@@ -159,7 +172,7 @@ public class NuguApiService {
 						Timetable time = new Timetable();
 						time.setLeftTime(convertTime(json.get("LEFTTIME").textValue()));
 						time.setSubwayEName(json.get("SUBWAYENAME").textValue());
-						timeTableList.add(time);
+						timetableList.add(time);
 					}
 				}
 			} else {
@@ -169,7 +182,8 @@ public class NuguApiService {
 			e.printStackTrace();
 		}
 		
-		return timeTableList;
+		log.info(timetableList.toString());
+		return timetableList;
 	}
 	
 	
@@ -205,7 +219,6 @@ public class NuguApiService {
 			e.printStackTrace();
 		}
 		
-		log.info(result);
 		return result;
 	}
 	
@@ -248,7 +261,9 @@ public class NuguApiService {
 		
 		String result = "";
 		
-		result = time.substring(0, 2) + "시" + time.substring(3, 5) + "분";
+		if (!time.equals("열차 없음")) {
+			result = time.substring(0, 2) + "시" + time.substring(3, 5) + "분";
+		} 
 		
 		return result;
 	}
