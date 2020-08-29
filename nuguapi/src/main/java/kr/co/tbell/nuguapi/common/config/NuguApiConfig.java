@@ -17,9 +17,9 @@ public class NuguApiConfig {
 	public ObjectMapper objectMapper() {
 		return Jackson2ObjectMapperBuilder
 						.json()
-						.featuresToDisable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+//						.featuresToDisable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
 						.modules(new JavaTimeModule())
-						.propertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE)
+//						.propertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE)
 						.build();
 	}
 	

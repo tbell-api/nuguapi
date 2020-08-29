@@ -63,6 +63,7 @@ public class NuguApiService {
 		List<Timetable> timetableList = getTimeTable(startStation, inOut);
 		NuguApiResponse response = new NuguApiResponse();
 		
+		
 		StationTimetable stationTimetable = new StationTimetable();
 		stationTimetable.setStationName(startStation.getStationNm());
 		stationTimetable.setLineNum(startStation.getLineNum());
