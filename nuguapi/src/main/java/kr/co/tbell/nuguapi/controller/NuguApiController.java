@@ -18,7 +18,7 @@ public class NuguApiController {
 	@Autowired
 	private NuguApiService nuguApiService;
 	
-	@RequestMapping(value="/getTimetable", method=RequestMethod.POST)
+	@RequestMapping(value="/timetable", method=RequestMethod.POST)
 	public String getTimetable(@RequestBody String request) {
 		
 //		JsonUtil.parseRequest(request);
